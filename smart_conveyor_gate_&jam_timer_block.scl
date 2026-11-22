@@ -1,0 +1,44 @@
+﻿FUNCTION_BLOCK "Block_1"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      auto_mode : Bool := TRUE;
+      start_cmd : Bool;
+      stop_cmd : Bool;
+      sensor_blocked : Bool;
+      reset_cmd : Bool;
+   END_VAR
+
+   VAR_OUTPUT 
+      belt_run : Bool;
+      diverter_active : Bool;
+      alarm_lamp : Bool;
+   END_VAR
+
+   VAR 
+      run_mem : Bool;
+      alarm_mem : Bool;
+      jam_timer {InstructionName := 'TON_TIME'; LibVersion := '1.0'; S7_SetPoint := 'False'} : TON_TIME;
+   END_VAR
+
+
+BEGIN
+	IF #stop_cmd THEN
+	    #run_mem := FALSE;
+	ELSIF #start_cmd AND NOT #alarm_mem THEN
+	    #run_mem := TRUE;
+	END_IF;
+	#jam_timer(IN := #run_mem AND #sensor_blocked,
+	           PT := T#3s);
+	IF #jam_timer.Q THEN
+	    #alarm_mem := TRUE;
+	    #run_mem := FALSE;
+	END_IF;
+	IF #reset_cmd AND NOT #sensor_blocked THEN
+	    #alarm_mem := FALSE;
+	END_IF;
+	#belt_run:= #run_mem AND NOT #alarm_mem;
+	#diverter_active := #auto_mode AND #sensor_blocked AND #alarm_mem;
+	#alarm_lamp := #alarm_mem;
+END_FUNCTION_BLOCK
+
